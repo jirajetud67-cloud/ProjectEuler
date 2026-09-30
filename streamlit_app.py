@@ -6,52 +6,58 @@ import matplotlib.pyplot as plt
 # ==========================================
 # 1. การตั้งค่าหน้าเว็บหลัก
 # ==========================================
-st.set_page_config(page_title="Euler's Method Simulator", layout="wide")
-st.title("🧮 Euler's Method Simulator")
+st.set_page_config(page_title="Project 1: Euler's Method", layout="wide")
+st.title("🧮 Project 1: Euler's Method Simulator")
 
 # ==========================================
-# 2. st.sidebar สำหรับรับค่าพารามิเตอร์ (รับแค่ h)
+# 2. st.sidebar สำหรับรับค่าพารามิเตอร์ (รับค่า h)
 # ==========================================
 st.sidebar.header("⚙️ กำหนดพารามิเตอร์")
 
-# รับค่า h เพียงอย่างเดียว
+# 1. ออกแบบวิธีรับค่า h
 h = st.sidebar.number_input(
-    "ขนาดช่วงก้าว (Step size: h)", 
+    "กรอกค่า Step size (h):", 
     value=0.1, 
     step=0.01, 
     format="%.4f"
 )
 
-# ค่าคงที่ตามโจทย์
+# เงื่อนไขเริ่มต้นตามโจทย์
 t0 = 1.0
 t_end = 2.0
-y0 = 2.1272295
+y0 = 1.0
 
-# ฟังก์ชันตัวอย่างสำหรับคำนวณ (สามารถปรับเปลี่ยน f(t,y) และ exact_solution ตามโจทย์จริงได้)
+# สมการ dy/dt = f(t, y)
 def f(t, y):
-    return t - y + 1
+    return (y / t) - ((y**2) / (t**2))
 
+# สมการ Exact Solution y(t) = t / (1 + ln(t))
 def exact_solution(t):
-    return t + np.exp(-t)
+    return t / (1.0 + np.log(t))
 
 # ==========================================
-# 3. st.tabs แบ่งเนื้อหาออกเป็นส่วนๆ
+# 3. st.tabs แบ่งเนื้อหาออกเป็น 3 ส่วน
 # ==========================================
 tab1, tab2, tab3 = st.tabs(["📚 ทฤษฎี (Theory)", "🎮 ตัวจำลอง (Simulator)", "📊 สรุปผล (Summary)"])
 
 # ------------------------------------------
-# Tab 1: ทฤษฎี
+# Tab 1: ทฤษฎี (Theory)
 # ------------------------------------------
 with tab1:
-    st.header("ระเบียบวิธีของออยเลอร์ (Euler's Method)")
-    st.write("""
-    **Euler's Method** เป็นระเบียบวิธีทางตัวเลขสำหรับหาคำตอบโดยประมาณของสมการเชิงอนุพันธ์
-    """)
-    st.latex(r"y_{n+1} = y_n + h \cdot f(t_n, y_n)")
-    st.latex(r"t_{n+1} = t_n + h")
+    st.header("โจทย์และระเบียบวิธีของออยเลอร์ (Euler's Method)")
+    
+    st.subheader("โจทย์ Initial-Value Problem (IVP)")
+    st.latex(r"y' = \frac{y}{t} - \frac{y^2}{t^2}, \quad 1 \le t \le 2, \quad y(1) = 1")
+    
+    st.subheader("Exact Solution")
+    st.latex(r"y(t) = \frac{t}{1 + \ln(t)}")
+    
+    st.subheader("สูตร Euler's Method")
+    st.latex(r"w_{i+1} = w_i + h \cdot f(t_i, w_i)")
+    st.latex(r"t_{i+1} = t_i + h")
 
 # ------------------------------------------
-# Tab 2: ตัวจำลองและการคำนวณ
+# Tab 2: ตัวจำลอง (Simulator)
 # ------------------------------------------
 with tab2:
     st.header(f"ผลการคำนวณเมื่อ h = {h}")
@@ -61,27 +67,27 @@ with tab2:
     euler_list = [y0]
     
     t_curr = t0
-    y_curr = y0
+    w_curr = y0
     
-    # คำนวณทีละ step จาก t0 ถึง t_end
+    # วนลูปคำนวณจาก t = 1.0 ถึง 2.0
     while t_curr < t_end - 1e-9:
-        y_next = y_curr + h * f(t_curr, y_curr)
+        w_next = w_curr + h * f(t_curr, w_curr)
         t_next = t_curr + h
         
         t_list.append(round(t_next, 6))
-        euler_list.append(y_next)
+        euler_list.append(w_next)
         
         t_curr = t_next
-        y_curr = y_next
+        w_curr = w_next
         
     t_arr = np.array(t_list)
     euler_arr = np.array(euler_list)
     exact_arr = exact_solution(t_arr)
     error_arr = np.abs(euler_arr - exact_arr)
     
-    # สร้าง DataFrame ในรูปแบบ Exact, Euler's, Error ตามโจทย์
+    # 3. ตารางเปรียบเทียบในรูปแบบ ti | Euler’s | Exact | Error
     df = pd.DataFrame({
-        't': t_arr,
+        'ti': t_arr,
         "Euler’s": euler_arr,
         'Exact': exact_arr,
         'Error': error_arr
@@ -91,9 +97,11 @@ with tab2:
     
     with col1:
         st.subheader("📋 ตารางเปรียบเทียบผลลัพธ์")
-        # จัด Format ให้ทศนิยมตรงตามโจทย์ (แสดง t เป็น 1 ตำแหน่ง และค่าอื่นๆ เป็น 7 ตำแหน่ง)
+        st.write(f"**h = {h}**")
+        
+        # จัด Format การแสดงผลทศนิยม
         formatted_df = df.style.format({
-            't': '{:.1f}',
+            'ti': '{:.1f}',
             "Euler’s": '{:.7f}',
             'Exact': '{:.7f}',
             'Error': '{:.7f}'
@@ -101,10 +109,16 @@ with tab2:
         st.dataframe(formatted_df, height=400, use_container_width=True)
         
     with col2:
+        # 2. แสดงกราฟเปรียบเทียบระหว่าง exact solution และ numerical solution
         st.subheader("📈 กราฟเปรียบเทียบ")
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.plot(t_arr, exact_arr, 'r-', label='Exact Solution', linewidth=2)
-        ax.plot(t_arr, euler_arr, 'b--o', label="Euler's Method", markersize=4)
+        fig, ax = plt.subplots(figsize=(6, 4.5))
+        
+        # สร้างเส้น Exact Solution ที่ละเอียดสำหรับวาดกราฟเรียบๆ
+        t_dense = np.linspace(t0, t_end, 200)
+        y_dense = exact_solution(t_dense)
+        
+        ax.plot(t_dense, y_dense, 'r-', label='Exact Solution', linewidth=2)
+        ax.plot(t_arr, euler_arr, 'b--o', label="Euler's Method", markersize=5)
         ax.set_xlabel('t')
         ax.set_ylabel('y')
         ax.set_title("Exact vs Numerical Solution")
@@ -113,22 +127,20 @@ with tab2:
         st.pyplot(fig)
 
 # ------------------------------------------
-# Tab 3: สรุปผล
+# Tab 3: สรุปผล (Summary)
 # ------------------------------------------
 with tab3:
-    st.header("สรุปผลการวิเคราะห์")
+    st.header("สรุปผลการประมาณค่า")
     
     max_error = df['Error'].max()
     avg_error = df['Error'].mean()
     
-    col_m1, col_m2 = st.columns(2)
+    col_m1, col_m2, col_m3 = st.columns(3)
     with col_m1:
-        st.metric(label="ค่าความคลาดเคลื่อนสูงสุด (Max Error)", value=f"{max_error:.7f}")
+        st.metric(label="ค่า Step size (h)", value=f"{h}")
     with col_m2:
-        st.metric(label="ค่าความคลาดเคลื่อนเฉลี่ย (Average Error)", value=f"{avg_error:.7f}")
+        st.metric(label="Max Error", value=f"{max_error:.7f}")
+    with col_m3:
+        st.metric(label="Average Error", value=f"{avg_error:.7f}")
     
-    st.markdown(f"""
-    **การวิเคราะห์ผลลัพธ์:**
-    * ทดสอบระบบด้วยค่าช่วงก้าว **$h = {h}$**
-    * จำนวนขั้นตอนทั้งหมดในการคำนวณ: **{len(df) - 1}** ขั้นตอน
-    """)
+    st.success(f"คำนวณสำเร็จทั้งหมด {len(df) - 1} ขั้นตอน (Steps)")
