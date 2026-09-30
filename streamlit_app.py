@@ -10,24 +10,28 @@ st.set_page_config(page_title="Euler's Method Simulator", layout="wide")
 st.title("🧮 Euler's Method Simulator")
 
 # ==========================================
-# 2. st.sidebar สำหรับรับค่าพารามิเตอร์
+# 2. st.sidebar สำหรับรับค่าพารามิเตอร์ (รับแค่ h)
 # ==========================================
 st.sidebar.header("⚙️ กำหนดพารามิเตอร์")
 
-# กำหนดตัวอย่างปัญหา dy/dt = f(t, y)
-st.sidebar.markdown("**โจทย์ตัวอย่าง:** $y' = t - y + 1$ โดยที่ $y(0) = 1$")
+# รับค่า h เพียงอย่างเดียว
+h = st.sidebar.number_input(
+    "ขนาดช่วงก้าว (Step size: h)", 
+    value=0.1, 
+    step=0.01, 
+    format="%.4f"
+)
 
-t0 = st.sidebar.number_input("ค่าเริ่มต้น t (t0)", value=0.0, step=0.1)
-y0 = st.sidebar.number_input("ค่าเริ่มต้น y (y0)", value=1.0, step=0.1)
-t_end = st.sidebar.number_input("ค่าสุดท้าย t (t_end)", value=2.0, step=0.1)
-h = st.sidebar.number_input("ขนาดช่วงก้าว (Step size: h)", value=0.1, step=0.01, format="%.3f")
+# ค่าคงที่ตามโจทย์
+t0 = 1.0
+t_end = 2.0
+y0 = 2.1272295
 
-# ฟังก์ชันฟิสิกส์/คณิตศาสตร์ (กำหนดตามโจทย์)
+# ฟังก์ชันตัวอย่างสำหรับคำนวณ (สามารถปรับเปลี่ยน f(t,y) และ exact_solution ตามโจทย์จริงได้)
 def f(t, y):
     return t - y + 1
 
 def exact_solution(t):
-    # สมการ Exact Solution ของ y' = t - y + 1, y(0)=1 คือ y(t) = t + e^(-t)
     return t + np.exp(-t)
 
 # ==========================================
@@ -41,75 +45,66 @@ tab1, tab2, tab3 = st.tabs(["📚 ทฤษฎี (Theory)", "🎮 ตัวจ�
 with tab1:
     st.header("ระเบียบวิธีของออยเลอร์ (Euler's Method)")
     st.write("""
-    **Euler's Method** เป็นระเบียบวิธีทางตัวเลข (Numerical Method) สำหรับหาคำตอบโดยประมาณของสมการเชิงอนุพันธ์อันดับหนึ่ง 
-    ที่มีรูปแบบปัญหาค่าเริ่มต้น (Initial Value Problem - IVP):
+    **Euler's Method** เป็นระเบียบวิธีทางตัวเลขสำหรับหาคำตอบโดยประมาณของสมการเชิงอนุพันธ์
     """)
-    st.latex(r"\frac{dy}{dt} = f(t, y), \quad y(t_0) = y_0")
-    
-    st.write("สูตรการประมาณค่าในแต่ละขั้นตอน:")
     st.latex(r"y_{n+1} = y_n + h \cdot f(t_n, y_n)")
     st.latex(r"t_{n+1} = t_n + h")
-    
-    st.write("โดยที่ $h$ คือขนาดของช่วงก้าว (Step size)")
 
 # ------------------------------------------
 # Tab 2: ตัวจำลองและการคำนวณ
 # ------------------------------------------
 with tab2:
-    st.header("ผลการคำนวณและเปรียบเทียบ")
+    st.header(f"ผลการคำนวณเมื่อ h = {h}")
     
-    # ประมวลผลคำนวณ Euler's Method
-    n_steps = int((t_end - t0) / h) + 1
-    t_values = [t0]
-    euler_values = [y0]
+    # คำนวณ Euler's Method
+    t_list = [t0]
+    euler_list = [y0]
     
     t_curr = t0
     y_curr = y0
     
-    for _ in range(n_steps - 1):
+    # คำนวณทีละ step จาก t0 ถึง t_end
+    while t_curr < t_end - 1e-9:
         y_next = y_curr + h * f(t_curr, y_curr)
         t_next = t_curr + h
         
-        t_values.append(t_next)
-        euler_values.append(y_next)
+        t_list.append(round(t_next, 6))
+        euler_list.append(y_next)
         
         t_curr = t_next
         y_curr = y_next
         
-    t_values = np.array(t_values)
-    euler_values = np.array(euler_values)
-    exact_values = exact_solution(t_values)
-    errors = np.abs(euler_values - exact_values)
+    t_arr = np.array(t_list)
+    euler_arr = np.array(euler_list)
+    exact_arr = exact_solution(t_arr)
+    error_arr = np.abs(euler_arr - exact_arr)
     
-    # สร้าง DataFrame ตาม Format ที่ต้องการ
+    # สร้าง DataFrame ในรูปแบบ Exact, Euler's, Error ตามโจทย์
     df = pd.DataFrame({
-        't': t_values,
-        "Euler's": euler_values,
-        'Exact': exact_values,
-        'Error': errors
+        't': t_arr,
+        "Euler’s": euler_arr,
+        'Exact': exact_arr,
+        'Error': error_arr
     })
     
-    # แสดงผลด้วย Columns (ซ้าย: ตาราง, ขวา: กราฟ)
     col1, col2 = st.columns([1, 1])
     
     with col1:
         st.subheader("📋 ตารางเปรียบเทียบผลลัพธ์")
-        # แสดงผลตารางด้วยทศนิยม 7 ตำแหน่งตามโจทย์
-        st.dataframe(
-            df.style.format({
-                't': '{:.1f}',
-                "Euler's": '{:.7f}',
-                'Exact': '{:.7f}',
-                'Error': '{:.7f}'
-            }),
-            height=400
-        )
+        # จัด Format ให้ทศนิยมตรงตามโจทย์ (แสดง t เป็น 1 ตำแหน่ง และค่าอื่นๆ เป็น 7 ตำแหน่ง)
+        formatted_df = df.style.format({
+            't': '{:.1f}',
+            "Euler’s": '{:.7f}',
+            'Exact': '{:.7f}',
+            'Error': '{:.7f}'
+        })
+        st.dataframe(formatted_df, height=400, use_container_width=True)
         
     with col2:
         st.subheader("📈 กราฟเปรียบเทียบ")
         fig, ax = plt.subplots(figsize=(6, 4))
-        ax.plot(t_values, exact_values, 'r-', label='Exact Solution', linewidth=2)
-        ax.plot(t_values, euler_values, 'b--o', label="Euler's Method", markersize=4)
+        ax.plot(t_arr, exact_arr, 'r-', label='Exact Solution', linewidth=2)
+        ax.plot(t_arr, euler_arr, 'b--o', label="Euler's Method", markersize=4)
         ax.set_xlabel('t')
         ax.set_ylabel('y')
         ax.set_title("Exact vs Numerical Solution")
@@ -126,11 +121,14 @@ with tab3:
     max_error = df['Error'].max()
     avg_error = df['Error'].mean()
     
-    st.metric(label="ค่าความคลาดเคลื่อนสูงสุด (Max Error)", value=f"{max_error:.7f}")
-    st.metric(label="ค่าความคลาดเคลื่อนเฉลี่ย (Average Error)", value=f"{avg_error:.7f}")
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        st.metric(label="ค่าความคลาดเคลื่อนสูงสุด (Max Error)", value=f"{max_error:.7f}")
+    with col_m2:
+        st.metric(label="ค่าความคลาดเคลื่อนเฉลี่ย (Average Error)", value=f"{avg_error:.7f}")
     
-    st.markdown("""
-    **ข้อสังเกต:**
-    * เมื่อปรับค่า **Step size ($h$)** ให้มีขนาดเล็กลง ค่าความคลาดเคลื่อน (Error) จะลดลงอย่างเห็นได้ชัด
-    * Euler's Method เหมาะสมกับการเรียนรู้พื้นฐาน แต่สำหรับการคำนวณที่ต้องการความแม่นยำสูง อาจพิจารณาใช้วิธีอื่น เช่น **Runge-Kutta (RK4)**
+    st.markdown(f"""
+    **การวิเคราะห์ผลลัพธ์:**
+    * ทดสอบระบบด้วยค่าช่วงก้าว **$h = {h}$**
+    * จำนวนขั้นตอนทั้งหมดในการคำนวณ: **{len(df) - 1}** ขั้นตอน
     """)
